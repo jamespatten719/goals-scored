@@ -3,7 +3,7 @@
 Created on Tue Oct 30 22:25:17 2018
 
 @author: jamespatten
-EDA inspiration from angps95
+EDA inspiration from: https://www.kaggle.com/angps95
 
 """
 # =============================================================================
@@ -18,6 +18,7 @@ from sklearn.grid_search import GridSearchCV
 import matplotlib.pyplot as plt
 from sklearn.model_selection import KFold
 from sklearn.model_selection import GridSearchCV
+from sklearn.cross_validation import cross_val_score
 
 # =============================================================================
 # Exploratory Data Analysis
@@ -79,6 +80,11 @@ rf_score = rf.score(X_test, y_test) #0.8877551020408163
 # =============================================================================
 # Model Evalutation / Parameter Tuning 
 # =============================================================================
+
+k_fold = KFold(n_splits=10, shuffle=True, random_state=0)
+
+def acc_score(model):
+    return np.mean(cross_val_score(model,x_train,y_train,cv=k_fold,scoring="accuracy"))
 
 #Grid Search for Param Tuning
 param_grid = { 
