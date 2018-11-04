@@ -21,6 +21,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
 from sklearn.cross_validation import cross_val_score
 from sklearn.metrics import confusion_matrix
+from sklearn.metrics import cohen_kappa_score
 
 # =============================================================================
 # Exploratory Data Analysis
@@ -62,8 +63,8 @@ plt.legend(labels)
 # =============================================================================
 # Modelling for Arsenal Goals Scored 
 # =============================================================================
-
-#df = df.loc[df['event_team'] == 'Arsenal']
+df = pd.read_csv('events.csv')
+df = df.loc[df['event_team'] == 'Arsenal']
 df = df.loc[df['event_type'] == 1]
 df = df.drop(['id_odsp','id_event','sort_order','text','event_type','event_type2','event_team','player_in','player_out','shot_outcome','fast_break','player2'],axis = 1)
 df = pd.get_dummies(df, columns=["opponent"])
@@ -78,7 +79,7 @@ rf = RandomForestClassifier()
 rf.fit(X_train, y_train)
 rf.predict(X_test)
 rf_score = rf.score(X_test, y_test) #0.8877551020408163
-
+print(rf_score)
 # =============================================================================
 # Model Evalutation / Parameter Tuning 
 # =============================================================================
@@ -100,15 +101,26 @@ param_grid = {
 CV_rf = GridSearchCV(estimator=rf, param_grid=param_grid, cv= 5)
 CV_rf.fit(X_train, y_train)
 CV_rf.best_params_
+y_pred = CV_rf.predict(X_test)
+CV_rf_score = rf.score(X_test, y_test)
+print(CV_rf_score)
 
 
 def confusion_matrix_model(model):
     cm=confusion_matrix(y_train,model.predict(X_train))
     cm=pd.DataFrame(cm)
-    cm.columns=["Predicted Goals"]
-    cm.index=["Actual Goals"]
+    cm.columns=["Predicted Goals", "Predicted Misses"]
+    cm.index=["Actual Goals", "Actual Misses"]
     return cm
 
+confusion_matrix_model(rf)
 confusion_matrix_model(CV_rf)
 accuracy_score(CV_rf)
+
+#f test to test difference between the two models
+
+#Kappa Score following from 
+kappa_score = cohen_kappa_score(y_test, y_pred, labels=None, weights=None)
+print(kappa_score) #0.0782178217821784
+
 
