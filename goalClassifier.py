@@ -105,8 +105,8 @@ CV_rf.best_params_
 def confusion_matrix_model(model):
     cm=confusion_matrix(y_train,model.predict(X_train))
     cm=pd.DataFrame(cm)
-    cm.columns=["Predicted Goal","Predicted Miss"]
-    cm.index=["Actual Goal", "Actual Miss"]
+    cm.columns=["Predicted Goals"]
+    cm.index=["Actual Goals"]
     return cm
 
 confusion_matrix_model(CV_rf)
