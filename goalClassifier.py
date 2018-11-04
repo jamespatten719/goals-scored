@@ -94,6 +94,7 @@ print(rf_score)
 # Model Evalutation / Parameter Tuning 
 # =============================================================================
 
+#Ranking feature importance
 importances = rf.feature_importances_
 std = np.std([tree.feature_importances_ for tree in rf.estimators_],
              axis=0)
@@ -114,6 +115,28 @@ plt.bar(range(X.shape[1]), importances[indices],
 plt.xticks(range(X.shape[1]), indices)
 plt.xlim([-1, X.shape[1]])
 plt.show()
+
+#Re-running model without least import features
+
+df = df.drop(['player_jack wilshere', 'opponent_Cardiff',
+       'opponent_Manchester Utd', 'opponent_Fulham',
+       'player_laurent koscielny', 'player_tomas rosicky',
+       'player_alex iwobi', 'player_jack cork', 'player_nicklas bendtner',
+       'player_hector bellerin', 'player_carl jenkinson',
+       'player_gabriel paulista', 'player_kieran gibbs',
+       'player_kyle naughton', 'player_per mertesacker',
+       'player_bacary sagna', 'player_mathieu flamini',
+       'player_joel campbell', 'player_kevin wimmer',
+       'player_granit xhaka', 'player_francis coquelin',
+       'player_chuba akpom', 'player_nacho monreal',
+       'player_shkodran mustafi', 'player_thomas vermaelen',
+       'player_mikel arteta', 'opponent_Middlesbrough',
+       'player_mathieu debuchy', 'player_serge gnabry',
+       'player_calum chambers', 'player_yaya sanogo',
+       'player_kim kallstrom', 'player_mohamed elneny',
+       'player_lucas perez', 'player_aly cissokho',
+       'player_tyler blackett', 'player_damien delaney',
+       'player_fabricio coloccini', 'player_gabriel', 'player_mark bunn'])
 
 #k fold accuracy
 k_fold = KFold(n_splits=10, shuffle=True, random_state=0)
@@ -143,6 +166,10 @@ CV_rf.best_params_
 y_pred = CV_rf.predict(X_test)
 CV_rf_score = rf.score(X_test, y_test)
 print(CV_rf_score)
+
+
+#Rank current features in the model
+
 
 confusion_matrix_model(rf)
 confusion_matrix_model(CV_rf)
