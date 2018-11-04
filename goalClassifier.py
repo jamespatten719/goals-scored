@@ -11,11 +11,13 @@ EDA inspiration from angps95
 # =============================================================================
 import pandas as pd
 import numpy as np
+from numpy  import array
 from sklearn import preprocessing 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.grid_search import GridSearchCV
 import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.model_selection import KFold
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
@@ -30,7 +32,13 @@ df = pd.read_csv('events.csv')
 df=df[df["is_goal"]==1]
 df = df.loc[df['event_team'] == 'Arsenal']
 
-#df in each minute
+#Standard Correlation Heatmap
+corrmat = df.corr() #correlation matrix heatmap
+f, ax = plt.subplots(figsize=(12, 9))
+sns.heatmap(corrmat, vmax=.8, square=True)
+
+
+#Goals in each minute
 fig=plt.figure(figsize=(10,8))
 plt.hist(df.time,width=1,bins=100,color="blue")   #100 so 1 bar per minute
 plt.xlabel("Min")
@@ -63,6 +71,7 @@ plt.legend(labels)
 # =============================================================================
 # Modelling for Arsenal Goals Scored 
 # =============================================================================
+
 df = pd.read_csv('events.csv')
 df = df.loc[df['event_team'] == 'Arsenal']
 df = df.loc[df['event_type'] == 1]
@@ -80,15 +89,45 @@ rf.fit(X_train, y_train)
 rf.predict(X_test)
 rf_score = rf.score(X_test, y_test) #0.8877551020408163
 print(rf_score)
+
 # =============================================================================
 # Model Evalutation / Parameter Tuning 
 # =============================================================================
 
-k_fold = KFold(n_splits=10, shuffle=True, random_state=0)
+importances = rf.feature_importances_
+std = np.std([tree.feature_importances_ for tree in rf.estimators_],
+             axis=0)
+indices = np.argsort(importances)[::-1]
 
+d = {key: value for (key, value) in enumerate(X.columns.values)}
+#name_indices = array([index for index, value in enumerate(X.columns.values)])
+feature_names_ranked = np.vectorize(d.get)(indices)
+
+for f in range(X.shape[1]):
+    print("Feature: " +  feature_names_ranked[f] + " (" +  str(importances[indices[f]]) + ")")
+
+# Plot the feature importances of the CV_rf
+plt.figure(figsize=(10,8))
+plt.title("Feature importances")
+plt.bar(range(X.shape[1]), importances[indices],
+       color="r", yerr=std[indices], align="center")
+plt.xticks(range(X.shape[1]), indices)
+plt.xlim([-1, X.shape[1]])
+plt.show()
+
+#k fold accuracy
+k_fold = KFold(n_splits=10, shuffle=True, random_state=0)
 def accuracy_score(model):
     return np.mean(cross_val_score(model,X_train,y_train,cv=k_fold,scoring="accuracy"))
 
+
+#confusion matrix to assess preciesion/recall
+def confusion_matrix_model(model):
+    cm=confusion_matrix(y_train,model.predict(X_train))
+    cm=pd.DataFrame(cm)
+    cm.columns=["Predicted Goals", "Predicted Misses"]
+    cm.index=["Actual Goals", "Actual Misses"]
+    return cm
 
 #Grid Search for Param Tuning
 param_grid = { 
@@ -105,22 +144,12 @@ y_pred = CV_rf.predict(X_test)
 CV_rf_score = rf.score(X_test, y_test)
 print(CV_rf_score)
 
-
-def confusion_matrix_model(model):
-    cm=confusion_matrix(y_train,model.predict(X_train))
-    cm=pd.DataFrame(cm)
-    cm.columns=["Predicted Goals", "Predicted Misses"]
-    cm.index=["Actual Goals", "Actual Misses"]
-    return cm
-
 confusion_matrix_model(rf)
 confusion_matrix_model(CV_rf)
 accuracy_score(CV_rf)
 
-#f test to test difference between the two models
-
 #Kappa Score following from 
 kappa_score = cohen_kappa_score(y_test, y_pred, labels=None, weights=None)
-print(kappa_score) #0.0782178217821784
+print(kappa_score) #0.0782178217821784 - very low Kappa despite high R2
 
 
