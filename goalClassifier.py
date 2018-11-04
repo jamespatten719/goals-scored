@@ -3,7 +3,7 @@
 Created on Tue Oct 30 22:25:17 2018
 
 @author: jamespatten
-EDA inspiration from: https://www.kaggle.com/angps95
+EDA inspiration from angps95
 
 """
 # =============================================================================
@@ -18,7 +18,9 @@ from sklearn.grid_search import GridSearchCV
 import matplotlib.pyplot as plt
 from sklearn.model_selection import KFold
 from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import accuracy_score
 from sklearn.cross_validation import cross_val_score
+from sklearn.metrics import confusion_matrix
 
 # =============================================================================
 # Exploratory Data Analysis
@@ -83,15 +85,16 @@ rf_score = rf.score(X_test, y_test) #0.8877551020408163
 
 k_fold = KFold(n_splits=10, shuffle=True, random_state=0)
 
-def acc_score(model):
-    return np.mean(cross_val_score(model,x_train,y_train,cv=k_fold,scoring="accuracy"))
+def accuracy_score(model):
+    return np.mean(cross_val_score(model,X_train,y_train,cv=k_fold,scoring="accuracy"))
+
 
 #Grid Search for Param Tuning
 param_grid = { 
     'n_estimators': [200, 500],
     'max_features': ['auto', 'sqrt', 'log2'],
     'max_depth' : [4,5,6,7,8,10],
-    'criterion' :['mse', 'mae']
+    'criterion' :['gini', 'entropy']
 }
 
 CV_rf = GridSearchCV(estimator=rf, param_grid=param_grid, cv= 5)
@@ -99,13 +102,13 @@ CV_rf.fit(X_train, y_train)
 CV_rf.best_params_
 
 
-def confusion_matrix_model(model_used):
-    cm=confusion_matrix(y_train,XC.predict(X_train))
+def confusion_matrix_model(model):
+    cm=confusion_matrix(y_train,model.predict(X_train))
     cm=pd.DataFrame(cm)
     cm.columns=["Predicted Goal","Predicted Miss"]
     cm.index=["Actual Goal", "Actual Miss"]
     return cm
 
-confusion_matrix_model(rf)
-
+confusion_matrix_model(CV_rf)
+accuracy_score(CV_rf)
 
