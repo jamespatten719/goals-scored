@@ -25,6 +25,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.cross_validation import cross_val_score
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import cohen_kappa_score
+from sklearn.metrics import roc_curve, auc
 
 # =============================================================================
 # Exploratory Data Analysis
@@ -77,7 +78,6 @@ df = pd.read_csv('events.csv')
 df = df.loc[df['event_team'] == 'Arsenal']
 df = df.loc[df['event_type'] == 1]
 df = df.drop(['id_odsp','id_event','sort_order','text','event_type','event_type2','event_team','player_in','player_out','shot_outcome','fast_break','player2'],axis = 1)
-df = pd.get_dummies(df, columns=["opponent"])
 df = pd.get_dummies(df, columns=["player"])
 df = df.dropna()
 
@@ -95,7 +95,7 @@ print(xg_score) #0.9183673469387755
 
 rf = RandomForestClassifier()
 rf.fit(X_train, y_train)
-rf.predict(X_test)
+y_pred = rf.predict(X_test)
 rf_score = rf.score(X_test, y_test) #0.8877551020408163
 print(rf_score)
 
@@ -188,5 +188,18 @@ accuracy_score(CV_rf)
 kappa_score = cohen_kappa_score(y_test, y_pred, labels=None, weights=None)
 print(kappa_score) #0.0782178217821784 - very low Kappa despite high R2
 
-#ROC curve
+#Receiver Operating Characteristic
+fpr, tpr, threshold = roc_curve(y_test, y_pred)
+roc_auc = auc(fpr, tpr) #0.6422309883848346
+
+#Plot of AUC
+plt.title('Receiver Operating Characteristic')
+plt.plot(fpr, tpr, 'b', label = 'AUC = %0.2f' % roc_auc)
+plt.legend(loc = 'lower right')
+plt.plot([0, 1], [0, 1],'r--')
+plt.xlim([0, 1])
+plt.ylim([0, 1])
+plt.ylabel('True Positive Rate')
+plt.xlabel('False Positive Rate')
+plt.show()
 
