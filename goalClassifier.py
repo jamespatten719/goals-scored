@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """
+Created on Tue Oct 30 22:25:17 2018
+
 @author: jamespatten
 EDA inspiration from angps95
 
@@ -13,6 +15,7 @@ from numpy  import array
 from sklearn import preprocessing 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 from sklearn.grid_search import GridSearchCV
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -82,6 +85,14 @@ X = df.drop('is_goal', axis=1)
 y = df["is_goal"]
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1)
 
+
+xg = XGBClassifier()
+xg.fit(X_train,y_train)
+xg.predict(X_test)
+xg_score = xg.score(X_test,y_test)
+print(xg_score) #0.9183673469387755
+# fit model no training data
+
 rf = RandomForestClassifier()
 rf.fit(X_train, y_train)
 rf.predict(X_test)
@@ -89,7 +100,7 @@ rf_score = rf.score(X_test, y_test) #0.8877551020408163
 print(rf_score)
 
 # =============================================================================
-# Model Evalutation / Parameter Tuning 
+# Random Forrest Model Tuning 
 # =============================================================================
 
 #Ranking feature importance
@@ -115,7 +126,6 @@ plt.xlim([-1, X.shape[1]])
 plt.show()
 
 #Re-running model without least import features
-
 df = df.drop(['player_jack wilshere', 'opponent_Cardiff',
        'opponent_Manchester Utd', 'opponent_Fulham',
        'player_laurent koscielny', 'player_tomas rosicky',
@@ -136,6 +146,26 @@ df = df.drop(['player_jack wilshere', 'opponent_Cardiff',
        'player_tyler blackett', 'player_damien delaney',
        'player_fabricio coloccini', 'player_gabriel', 'player_mark bunn'])
 
+
+#Grid Search for Param Tuninag
+param_grid = { 
+    'n_estimators': [200, 500],
+    'max_features': ['auto', 'sqrt', 'log2'],
+    'max_depth' : [4,5,6,7,8,10],
+    'criterion' :['gini', 'entropy']
+}
+
+CV_rf = GridSearchCV(estimator=rf, param_grid=param_grid, cv= 5)
+CV_rf.fit(X_train, y_train)
+CV_rf.best_params_
+y_pred = CV_rf.predict(X_test)
+CV_rf_score = rf.score(X_test, y_test)
+print(CV_rf_score) #not much increase in R2 score
+
+# =============================================================================
+# Random Forrest Model Evaluation
+# =============================================================================
+
 #k fold accuracy
 k_fold = KFold(n_splits=10, shuffle=True, random_state=0)
 def accuracy_score(model):
@@ -150,31 +180,13 @@ def confusion_matrix_model(model):
     cm.index=["Actual Goals", "Actual Misses"]
     return cm
 
-#Grid Search for Param Tuning
-param_grid = { 
-    'n_estimators': [200, 500],
-    'max_features': ['auto', 'sqrt', 'log2'],
-    'max_depth' : [4,5,6,7,8,10],
-    'criterion' :['gini', 'entropy']
-}
-
-CV_rf = GridSearchCV(estimator=rf, param_grid=param_grid, cv= 5)
-CV_rf.fit(X_train, y_train)
-CV_rf.best_params_
-y_pred = CV_rf.predict(X_test)
-CV_rf_score = rf.score(X_test, y_test)
-print(CV_rf_score)
-
-
-#Rank current features in the model
-
-
 confusion_matrix_model(rf)
 confusion_matrix_model(CV_rf)
 accuracy_score(CV_rf)
 
-#Kappa Score following from 
+#Kappa Score
 kappa_score = cohen_kappa_score(y_test, y_pred, labels=None, weights=None)
 print(kappa_score) #0.0782178217821784 - very low Kappa despite high R2
 
+#ROC curve
 
