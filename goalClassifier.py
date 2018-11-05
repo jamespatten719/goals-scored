@@ -26,6 +26,7 @@ from sklearn.cross_validation import cross_val_score
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import cohen_kappa_score
 from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import f1_score
 
 # =============================================================================
 # Exploratory Data Analysis
@@ -190,7 +191,7 @@ print(kappa_score) #0.0782178217821784 - very low Kappa despite high R2
 
 #Receiver Operating Characteristic
 fpr, tpr, threshold = roc_curve(y_test, y_pred)
-roc_auc = auc(fpr, tpr) #0.6422309883848346
+roc_auc = auc(fpr, tpr) #0.6422309883848346 - quite low
 
 #Plot of AUC
 plt.title('Receiver Operating Characteristic')
@@ -202,4 +203,7 @@ plt.ylim([0, 1])
 plt.ylabel('True Positive Rate')
 plt.xlabel('False Positive Rate')
 plt.show()
+
+#F1 score
+f1_score(y_test, y_pred, average='weighted') #0.8708086355973681 - strong 
 
