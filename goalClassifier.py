@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Oct 30 22:25:17 2018
-
 @author: jamespatten
 EDA inspiration from angps95
 
@@ -15,6 +13,7 @@ from numpy  import array
 from sklearn import preprocessing 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
+import xgboost as xgb
 from xgboost import XGBClassifier
 from sklearn.grid_search import GridSearchCV
 import matplotlib.pyplot as plt
@@ -86,7 +85,7 @@ X = df.drop('is_goal', axis=1)
 y = df["is_goal"]
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1)
 
-
+#initial XGB test using scikit learn tools
 xg = XGBClassifier()
 xg.fit(X_train,y_train)
 xg.predict(X_test)
@@ -207,3 +206,13 @@ plt.show()
 #F1 score
 f1_score(y_test, y_pred, average='weighted') #0.8708086355973681 - strong 
 
+# =============================================================================
+# XGBoost Evaluation
+# =============================================================================
+
+xg_matrix= xgb.DMatrix(data=X, label=y)
+params = {"objective":"reg:logistic", "max_depth":3}
+#cross val
+cv_results = xgb.cv(dtrain=xg_matrix, params=params, nfold=3, num_boost_round=5, metrics="error", as_pandas=True, seed=123)
+# Accuracy
+print(((1-cv_results["test-error-mean"]).iloc[-1])) #0.900875
