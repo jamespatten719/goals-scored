@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """
+Created on Tue Oct 30 22:25:17 2018
+
 @author: jamespatten
 EDA inspiration from angps95
 
