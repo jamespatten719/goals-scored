@@ -147,7 +147,7 @@ df = df.drop(['player_jack wilshere', 'opponent_Cardiff',
        'player_kim kallstrom', 'player_mohamed elneny',
        'player_lucas perez', 'player_aly cissokho',
        'player_tyler blackett', 'player_damien delaney',
-       'player_fabricio coloccini', 'player_gabriel', 'player_mark bunn'])
+       'player_fabricio coloccini', 'player_gabriel', 'player_mark bunn'],axis=1)
 
 
 #Grid Search for Param Tuninag
