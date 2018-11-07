@@ -79,6 +79,7 @@ df = df.loc[df['event_team'] == 'Arsenal']
 df = df.loc[df['event_type'] == 1]
 df = df.drop(['id_odsp','id_event','sort_order','text','event_type','event_type2','event_team','player_in','player_out','shot_outcome','fast_break','player2'],axis = 1)
 df = pd.get_dummies(df, columns=["player"])
+df = pd.get_dummies(df, columns=["opponent"])
 df = df.dropna()
 
 X = df.drop('is_goal', axis=1)
@@ -92,6 +93,8 @@ xg.predict(X_test)
 xg_score = xg.score(X_test,y_test)
 print(xg_score) #0.9183673469387755
 # fit model no training data
+
+
 
 rf = RandomForestClassifier()
 rf.fit(X_train, y_train)
@@ -207,12 +210,84 @@ plt.show()
 f1_score(y_test, y_pred, average='weighted') #0.8708086355973681 - strong 
 
 # =============================================================================
-# XGBoost Evaluation
+# XGB Tuning using test error mean and AUC
 # =============================================================================
+#reload df
+df = pd.read_csv('events.csv')
+df = df.loc[df['event_team'] == 'Arsenal']
+df = df.loc[df['event_type'] == 1]
+df = df.drop(['id_odsp','id_event','sort_order','text','event_type','event_type2','event_team','player_in','player_out','shot_outcome','fast_break','player2'],axis = 1)
+df = pd.get_dummies(df, columns=["player"])
+df = pd.get_dummies(df, columns=["opponent"])
+df = df.dropna()
 
 xg_matrix= xgb.DMatrix(data=X, label=y)
-params = {"objective":"reg:logistic", "max_depth":3}
+params = {"objective":"reg:logistic", "max_depth":3} 
 #cross val
 cv_results = xgb.cv(dtrain=xg_matrix, params=params, nfold=3, num_boost_round=5, metrics="error", as_pandas=True, seed=123)
 # Accuracy
 print(((1-cv_results["test-error-mean"]).iloc[-1])) #0.900875
+
+
+X = df.drop('is_goal', axis=1)
+y = df["is_goal"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1)
+
+#Initialise Parameters
+xgb1 = XGBClassifier(
+ learning_rate =0.1,
+ n_estimators=1000,
+ max_depth=5,
+ min_child_weight=1,
+ gamma=0,
+ subsample=0.8,
+ colsample_bytree=0.8,
+ objective= 'binary:logistic',
+ nthread=4,
+ scale_pos_weight=1,
+ seed=27)
+
+#Tune max_depth and min_child_weight
+param_xgb1 = {
+ 'max_depth':[4,5,6],
+ 'min_child_weight':[4,5,6]
+}
+
+CV_xgb1 = GridSearchCV(estimator = XGBClassifier( learning_rate=0.1, n_estimators=140, max_depth=5,
+ min_child_weight=2, gamma=0, subsample=0.8, colsample_bytree=0.8,
+ objective= 'binary:logistic', nthread=4, scale_pos_weight=1,seed=27), 
+ param_grid = param_xgb1, scoring='roc_auc',n_jobs=4,iid=False, cv=5)
+
+CV_xgb1.fit(X_train, y_train)
+CV_xgb1.grid_scores_, CV_xgb1.best_params_, CV_xgb1.best_score_
+
+#Tuning Gamma
+param_xgb2= {
+ 'gamma':[i/10.0 for i in range(0,5)]
+}
+CV_xgb2 = GridSearchCV(estimator = XGBClassifier(learning_rate =0.1, n_estimators=140, max_depth=4,
+ min_child_weight=6, gamma=0, subsample=0.8, colsample_bytree=0.8,
+ objective= 'binary:logistic', nthread=4, scale_pos_weight=1,seed=27), 
+ param_grid = param_xgb2, scoring='roc_auc',n_jobs=4,iid=False, cv=5)
+
+CV_xgb2.fit(X_train, y_train)
+CV_xgb2.grid_scores_, CV_xgb2.best_params_, CV_xgb2.best_score_
+
+#Tuning Regularisation Parameters
+param_xgb3 = {
+ 'reg_alpha':[1e-5, 1e-2, 0.1, 1, 100]
+}
+CV_xgb3= GridSearchCV(estimator = XGBClassifier( learning_rate =0.1, n_estimators=177, max_depth=4,
+ min_child_weight=6, gamma=0.2, subsample=0.8, colsample_bytree=0.8,
+ objective= 'binary:logistic', nthread=4, scale_pos_weight=1,seed=27), 
+ param_grid = param_xgb3, scoring='roc_auc',n_jobs=4,iid=False, cv=5)
+
+CV_xgb3.fit(X_train, y_train)
+CV_xgb3.grid_scores_, CV_xgb3.best_params_, CV_xgb3.best_score_
+
+# AUC 0.9337659622950121
+
+
+
+
+
