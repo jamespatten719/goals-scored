@@ -223,17 +223,11 @@ df = pd.get_dummies(df, columns=["player"])
 df = pd.get_dummies(df, columns=["opponent"])
 df = df.dropna()
 
-xg_matrix= xgb.DMatrix(data=X, label=y)
-params = {"objective":"reg:logistic", "max_depth":3} 
-#cross val
-cv_results = xgb.cv(dtrain=xg_matrix, params=params, nfold=3, num_boost_round=5, metrics="error", as_pandas=True, seed=123)
-# Accuracy
-print(((1-cv_results["test-error-mean"]).iloc[-1])) #0.900875
-
-
 X = df.drop('is_goal', axis=1)
 y = df["is_goal"]
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1)
+
+
 
 #Initialise Parameters
 xgb1 = XGBClassifier(
@@ -289,7 +283,34 @@ CV_xgb3.grid_scores_, CV_xgb3.best_params_, CV_xgb3.best_score_
 
 # AUC 0.9337659622950121
 
+# =============================================================================
+# Vizualising Model
+# =============================================================================
 
+#Convert booster into an XGBModel instance
 
+#Initial accuracy check
+xg_matrix= xgb.DMatrix(data=X, label=y)
+params = {"objective":"binary:logistic", "max_depth":4,"learning_rate":0.1,"n_estimators":177,
+          "min_child_weight":6,"gamma":0.2, "subsample":0.8, "colsample_bytree":0.8,
+          "nthread":4, "scale_pos_weight":1} 
+#train model
+CV_xgb4 = xgb.train(params=params, dtrain=xg_matrix, num_boost_round=10)
 
+#cross val
+cv_results = xgb.cv(dtrain=xg_matrix, params=params, nfold=3, num_boost_round=5, metrics="error", as_pandas=True, seed=123)
+# Accuracy
+print(((1-cv_results["test-error-mean"]).iloc[-1])) #0.8993413333333333
 
+#Visualise XGBoost trees - requires GraphViz executables
+# Plot the first tree
+xgb.plot_tree(CV_xgb4, num_trees=0)
+plt.show()
+
+# Plot the fifth tree
+xgb.plot_tree(CV_xgb4, num_trees=4)
+plt.show()
+
+# Plot the last tree sideways
+xgb.plot_tree(CV_xgb4, num_trees=9, rankdir='LR')
+plt.show()
