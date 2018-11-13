@@ -15,6 +15,7 @@ from numpy  import array
 from sklearn import preprocessing 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
+from numpy import sort
 import xgboost as xgb
 from xgboost import XGBClassifier
 from sklearn.grid_search import GridSearchCV
@@ -27,7 +28,11 @@ from sklearn.cross_validation import cross_val_score
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import cohen_kappa_score
 from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import accuracy_score
 from sklearn.metrics import f1_score
+from sklearn.feature_selection import SelectFromModel
+from sklearn.feature_selection import f_classif
+from scipy import stats
 
 # =============================================================================
 # Exploratory Data Analysis
@@ -130,7 +135,7 @@ plt.xticks(range(X.shape[1]), indices)
 plt.xlim([-1, X.shape[1]])
 plt.show()
 
-#Re-running model without least import features
+#Re-running model without least import features - manual feature selection
 df = df.drop(['player_jack wilshere', 'opponent_Cardiff',
        'opponent_Manchester Utd', 'opponent_Fulham',
        'player_laurent koscielny', 'player_tomas rosicky',
@@ -228,7 +233,6 @@ y = df["is_goal"]
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1)
 
 
-
 #Initialise Parameters
 xgb1 = XGBClassifier(
  learning_rate =0.1,
@@ -280,11 +284,60 @@ CV_xgb3= GridSearchCV(estimator = XGBClassifier( learning_rate =0.1, n_estimator
 
 CV_xgb3.fit(X_train, y_train)
 CV_xgb3.grid_scores_, CV_xgb3.best_params_, CV_xgb3.best_score_
-
 # AUC 0.9337659622950121
 
 # =============================================================================
-# Vizualising Model
+# XGB Feature Selection
+# =============================================================================
+CV_xgb3 = CV_xgb3.best_estimator_
+
+thresholds = sort(CV_xgb3.feature_importances_) #
+for thresh in thresholds:
+	# select features using threshold
+	selection = SelectFromModel(CV_xgb3, threshold=thresh, prefit=True)
+	select_X_train = selection.transform(X_train)
+	# train model
+	selection_model = XGBClassifier()
+	selection_model.fit(select_X_train, y_train)
+	# eval model
+	select_X_test = selection.transform(X_test)
+	y_pred = selection_model.predict(select_X_test)
+	predictions = [round(value) for value in y_pred]
+	accuracy = accuracy_score(y_test, predictions)
+	print("Thresh=%.3f, n=%d, Accuracy: %.2f%%" % (thresh, select_X_train.shape[1], accuracy*100.0))   
+    #best to use only top 6 features
+    
+#mapping the most important features to feature names
+importances = CV_xgb3.feature_importances_
+indices = np.argsort(importances)[::-1]
+
+d = {key: value for (key, value) in enumerate(X.columns.values)}
+#name_indices = array([index for index, value in enumerate(X.columns.values)])
+feature_names_ranked = np.vectorize(d.get)(indices)
+
+for f in range(X.shape[1]):
+    print("Feature: " +  feature_names_ranked[f] + " (" +  str(importances[indices[f]]) + ")")
+
+# Plot the feature importances of the CV_xgb3
+plt.figure(figsize=(10,8))
+plt.title("Feature importances")
+plt.bar(range(X.shape[1]), importances[indices],
+       color="r", align="center")
+plt.xticks(range(X.shape[1]), indices)
+plt.xlim([-1, X.shape[1]])
+plt.show()
+
+#Anova F-test of significance between full and reduced model 
+X_reduced = df[['time','shot_place','location','assist_method','bodypart','situation']]
+X_trainR, X_testR, y_train4, y_test4 = train_test_split(X_reduced, y, test_size = 0.1)
+xgbR = CV_xgb3.fit(X_trainR,y_train4)
+
+y_pred = (CV_xgb3.predict(X_test)).tolist()
+y_predR = (CV_xgb3.predict(X_testR)).tolist()
+
+
+# =============================================================================
+# Vizualising Model 
 # =============================================================================
 
 #Convert booster into an XGBModel instance
@@ -304,13 +357,8 @@ print(((1-cv_results["test-error-mean"]).iloc[-1])) #0.8993413333333333
 
 #Visualise XGBoost trees - requires GraphViz executables
 # Plot the first tree
-xgb.plot_tree(CV_xgb4, num_trees=0)
-plt.show()
-
-# Plot the fifth tree
-xgb.plot_tree(CV_xgb4, num_trees=4)
-plt.show()
 
 # Plot the last tree sideways
 xgb.plot_tree(CV_xgb4, num_trees=9, rankdir='LR')
 plt.show()
+
