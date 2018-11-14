@@ -33,6 +33,8 @@ from sklearn.metrics import f1_score
 from sklearn.feature_selection import SelectFromModel
 from sklearn.feature_selection import f_classif
 from scipy import stats
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import chi2
 
 # =============================================================================
 # Exploratory Data Analysis
@@ -327,14 +329,25 @@ plt.xticks(range(X.shape[1]), indices)
 plt.xlim([-1, X.shape[1]])
 plt.show()
 
-#Anova F-test of significance between full and reduced model 
-X_reduced = df[['time','shot_place','location','assist_method','bodypart','situation']]
-X_trainR, X_testR, y_train4, y_test4 = train_test_split(X_reduced, y, test_size = 0.1)
-xgbR = CV_xgb3.fit(X_trainR,y_train4)
+#check if same 6 features are selected through ANOVA F and Chi2
+#X_chi2 = SelectKBest(chi2, k=6).fit_transform(X, y)
+#X_f = SelectKBest(f_classif, k=6).fit_transform(X, y)
 
-y_pred = (CV_xgb3.predict(X_test)).tolist()
+#F-test of significance between full and reduced model 
+X_reduced = df[['time','shot_place','location','assist_method','bodypart','situation']]
+X_trainR, X_testR, y_trainR, y_testR = train_test_split(X_reduced, y, test_size = 0.1)
+xgbR = CV_xgb3.fit(X_trainR,y_trainR)
+
+y_pred = CV_xgb3.predict(X_test)
+y_pred = y_pred.tolist()
 y_predR = (CV_xgb3.predict(X_testR)).tolist()
 
+F = np.var(y_predR) / np.var(y_pred)
+df1 = len(y_predR) - 1
+df2 = len(y_pred) - 1
+#alpha = 0.05
+p_value = stats.f.cdf(F, df1, df2) #  0.967849254975412
+#Insufficient evidence to reject null hypothesis that reduced model is significantly different to full model 
 
 # =============================================================================
 # Vizualising Model 
