@@ -34,6 +34,8 @@ from sklearn.feature_selection import f_classif
 from scipy import stats
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
+from bayes_opt import BayesianOptimization
+
 
 # =============================================================================
 # Exploratory Data Analysis
