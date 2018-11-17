@@ -22,20 +22,18 @@ from sklearn.grid_search import GridSearchCV
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import KFold
-from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
 from sklearn.cross_validation import cross_val_score
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import cohen_kappa_score
 from sklearn.metrics import roc_curve, auc
-from sklearn.metrics import accuracy_score
 from sklearn.metrics import f1_score
 from sklearn.feature_selection import SelectFromModel
 from sklearn.feature_selection import f_classif
-from scipy import stats
+from scipy import statsa
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
-from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import make_scorer
 from sklearn.preprocessing import Imputer
 
