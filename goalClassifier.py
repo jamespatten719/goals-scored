@@ -3,6 +3,7 @@
 
 @author: jamespatten
 EDA inspiration from angps95
+Hyperopt implementation from eikedehling
 
 """
 # =============================================================================
@@ -34,8 +35,14 @@ from sklearn.feature_selection import f_classif
 from scipy import stats
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
-from bayes_opt import BayesianOptimization
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.metrics import make_scorer
+from sklearn.preprocessing import Imputer
 
+
+#Bayesian Optimisation
+from hyperopt import hp, tpe
+from hyperopt.fmin import fmin
 
 # =============================================================================
 # Exploratory Data Analysis
@@ -90,7 +97,9 @@ df = df.loc[df['event_type'] == 1]
 df = df.drop(['id_odsp','id_event','sort_order','text','event_type','event_type2','event_team','player_in','player_out','shot_outcome','fast_break','player2'],axis = 1)
 df = pd.get_dummies(df, columns=["player"])
 df = pd.get_dummies(df, columns=["opponent"])
-df = df.dropna()
+
+imp=Imputer(missing_values="NaN", strategy="mean" )
+df["shot_place"]=imp.fit_transform(df[["shot_place"]]).ravel()
 
 X = df.drop('is_goal', axis=1)
 y = df["is_goal"]
@@ -103,8 +112,6 @@ xg.predict(X_test)
 xg_score = xg.score(X_test,y_test)
 print(xg_score) #0.9183673469387755
 # fit model no training data
-
-
 
 rf = RandomForestClassifier()
 rf.fit(X_train, y_train)
@@ -229,12 +236,13 @@ df = df.loc[df['event_type'] == 1]
 df = df.drop(['id_odsp','id_event','sort_order','text','event_type','event_type2','event_team','player_in','player_out','shot_outcome','fast_break','player2'],axis = 1)
 df = pd.get_dummies(df, columns=["player"])
 df = pd.get_dummies(df, columns=["opponent"])
-df = df.dropna()
+
+imp=Imputer(missing_values="NaN", strategy="mean" )
+df["shot_place"]=imp.fit_transform(df[["shot_place"]]).ravel()
 
 X = df.drop('is_goal', axis=1)
 y = df["is_goal"]
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1)
-
 
 #Initialise Parameters
 xgb1 = XGBClassifier(
@@ -290,6 +298,57 @@ CV_xgb3.grid_scores_, CV_xgb3.best_params_, CV_xgb3.best_score_
 # AUC 0.9337659622950121
 
 # =============================================================================
+# Bayesian Optimisation with hyperopt (using Tree-structured Parzen Estimator)
+# =============================================================================
+
+def gini(truth, predictions):
+    g = np.asarray(np.c_[truth, predictions, np.arange(len(truth)) ], dtype=np.float)
+    g = g[np.lexsort((g[:,2], -1*g[:,1]))]
+    gs = g[:,0].cumsum().sum() / g[:,0].sum()
+    gs -= (len(truth) + 1) / 2.
+    return gs / len(truth)
+
+def gini_xgb(predictions, truth):
+    truth = truth.get_label()
+    return 'gini', -1.0 * gini(truth, predictions) / gini(truth, truth)
+
+def gini_sklearn(truth, predictions):
+    return gini(truth, predictions) / gini(truth, truth)
+
+gini_scorer = make_scorer(gini_sklearn, greater_is_better=True, needs_proba=True)
+
+def objective(params):
+    params = {
+        'max_depth': int(params['max_depth']),
+        'gamma': "{:.3f}".format(params['gamma']),
+        'colsample_bytree': '{:.3f}'.format(params['colsample_bytree']),
+    }
+    
+    xg = xgb.XGBClassifier(
+        n_estimators=250,
+        learning_rate=0.05,
+        n_jobs=4,
+        **params
+    )
+    
+    score = cross_val_score(xg, X, y, scoring=gini_scorer, cv=StratifiedKFold()).mean()
+    print("Gini {:.3f} params {}".format(score, params))
+    return score
+
+space = {
+    'max_depth': hp.quniform('max_depth', 2, 8, 1),
+    'colsample_bytree': hp.uniform('colsample_bytree', 0.3, 1.0),
+    'gamma': hp.uniform('gamma', 0.0, 0.5),
+}
+
+best = fmin(fn=objective,
+            space=space,
+            algo=tpe.suggest,
+            max_evals=10)
+
+print("Hyperopt estimated optimum {}".format(best))
+
+# =============================================================================
 # XGB Feature Selection
 # =============================================================================
 CV_xgb3 = CV_xgb3.best_estimator_
@@ -334,20 +393,20 @@ plt.show()
 #X_chi2 = SelectKBest(chi2, k=6).fit_transform(X, y)
 #X_f = SelectKBest(f_classif, k=6).fit_transform(X, y)
 
-#F-test of significance between full and reduced model 
-X_reduced = df[['time','shot_place','location','assist_method','bodypart','situation']]
-X_trainR, X_testR, y_trainR, y_testR = train_test_split(X_reduced, y, test_size = 0.1)
-xgbR = CV_xgb3.fit(X_trainR,y_trainR)
-
-y_pred = CV_xgb3.predict(X_test)
-y_pred = y_pred.tolist()
-y_predR = (CV_xgb3.predict(X_testR)).tolist()
-
-F = np.var(y_predR) / np.var(y_pred)
-df1 = len(y_predR) - 1
-df2 = len(y_pred) - 1
-#alpha = 0.05
-p_value = stats.f.cdf(F, df1, df2) #  0.967849254975412
+##F-test of significance between full and reduced model 
+#X_reduced = df[['time','shot_place','location','assist_method','bodypart','situation']]
+#X_trainR, X_testR, y_trainR, y_testR = train_test_split(X_reduced, y, test_size = 0.1)
+#xgbR = CV_xgb3.fit(X_trainR,y_trainR)
+#
+#y_pred = CV_xgb3.predict(X_test)
+#y_pred = y_pred.tolist()
+#y_predR = (CV_xgb3.predict(X_testR)).tolist()
+#
+#F = np.var(y_predR) / np.var(y_pred)
+#df1 = len(y_predR) - 1
+#df2 = len(y_pred) - 1
+##alpha = 0.05
+#p_value = stats.f.cdf(F, df1, df2) #  0.967849254975412
 #Insufficient evidence to reject null hypothesis that reduced model is significantly different to full model 
 
 # =============================================================================
